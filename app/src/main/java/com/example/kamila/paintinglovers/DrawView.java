@@ -2,6 +2,7 @@ package com.example.kamila.paintinglovers;
 
 import android.content.Context;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -10,100 +11,109 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 
 /**
  * Created by kamila on 4/28/17.
  */
 
-public class DrawView extends SurfaceView implements SurfaceHolder.Callback {
+public class DrawView extends View {
 
-    SurfaceHolder surfaceHolder;
-    Thread thread;
-    int x_touch;
-    int y_touch;
-    Path path ;
-    Paint paint = new Paint();
+    public int width;
+    public  int height;
+    private Bitmap mBitmap;
+    private Canvas mCanvas;
+    private Path mPath;
+    private Paint   mBitmapPaint;
+    Context context;
+    private Paint circlePaint;
+    private Path circlePath;
+    private Paint mPaint;
 
-    int right;
-    int left;
-    int bottom;
-    int top;
-    public DrawView(Context context){
-        super(context);
-        getHolder().addCallback(this);
+    public DrawView(Context c, Paint mPaint) {
+        super(c);
+        context=c;
+        mPath = new Path();
+        mBitmapPaint = new Paint(Paint.DITHER_FLAG);
+        circlePaint = new Paint();
+        circlePath = new Path();
+        circlePaint.setAntiAlias(true);
+        circlePaint.setColor(Color.BLUE);
+        circlePaint.setStyle(Paint.Style.STROKE);
+        circlePaint.setStrokeJoin(Paint.Join.MITER);
+        circlePaint.setStrokeWidth(4f);
+        this.mPaint = mPaint;
     }
 
     @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        surfaceHolder = holder;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while(true) {
-                    Canvas canvas = surfaceHolder.lockCanvas();
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
 
-                    if (canvas == null) {
-                        Log.d("My", "canvasisnull");
-                        return;
-                    }
-                    long startTime = System.currentTimeMillis();
-                    update();
-                    draw(canvas);
-                    long drawtime = System.currentTimeMillis() - startTime;
-                    float fps = 1000 / (drawtime == 0 ? 1 : drawtime);
-                    Log.d("My", fps + " ");
-                    surfaceHolder.unlockCanvasAndPost(canvas);
-                }
-            }
-        }).start();
-
+        mBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        mCanvas = new Canvas(mBitmap);
     }
 
     @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
 
+        canvas.drawBitmap( mBitmap, 0, 0, mBitmapPaint);
+        canvas.drawPath( mPath,  mPaint);
+        canvas.drawPath( circlePath,  circlePaint);
+    }
+
+    private float mX, mY;
+    private static final float TOUCH_TOLERANCE = 4;
+
+    private void touch_start(float x, float y) {
+        mPath.reset();
+        mPath.moveTo(x, y);
+        mX = x;
+        mY = y;
+    }
+
+    private void touch_move(float x, float y) {
+        float dx = Math.abs(x - mX);
+        float dy = Math.abs(y - mY);
+        if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
+            mPath.quadTo(mX, mY, (x + mX)/2, (y + mY)/2);
+            mX = x;
+            mY = y;
+
+            circlePath.reset();
+            circlePath.addCircle(mX, mY, 30, Path.Direction.CW);
+        }
+    }
+
+    private void touch_up() {
+        mPath.lineTo(mX, mY);
+        circlePath.reset();
+        // commit the path to our offscreen
+        mCanvas.drawPath(mPath,  mPaint);
+        // kill this so we don't double draw
+        mPath.reset();
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-//        int action = event.getAction() ;
-//        x_touch = (int) event.getX() ;
-//        y_touch = (int) event.getY() ;
-//
-//            switch (event.getAction()){
-//                case  MotionEvent.ACTION_UP:
-//                    right = x_touch+30;
-//                case MotionEvent.ACTION_DOWN:
-//                    bottom= y_touch+30;
-//
-//                case MotionEvent.ACTION_MOVE:
-//
-//            }
+        float x = event.getX();
+        float y = event.getY();
 
-            return super.onTouchEvent(event);
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-
-    }
-
-    public  void update(){
-
-    }
-    public  void draw(Canvas canvas){
-        canvas.drawColor(Color.CYAN);
-        paint = new Paint();
-        path= new Path();
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setColor(Color.BLACK);
-        path.moveTo(500,500);
-        path.lineTo(700,700);
-
-        Log.d("My", path.toString());
-        Log.d("My", paint.toString());
-        canvas.drawPath(path,paint);
-
-
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                touch_start(x, y);
+                invalidate();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                touch_move(x, y);
+                invalidate();
+                break;
+            case MotionEvent.ACTION_UP:
+                touch_up();
+                invalidate();
+                break;
+        }
+        return true;
     }
 }
+
