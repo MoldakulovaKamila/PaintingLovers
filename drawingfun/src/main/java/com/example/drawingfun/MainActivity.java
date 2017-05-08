@@ -1,22 +1,29 @@
 package com.example.drawingfun;
 
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import java.util.UUID;
-import android.provider.MediaStore;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.Toast;
+
+import java.net.URISyntaxException;
+import java.util.UUID;
+
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     public DrawingView drawView;
 
+    Socket socket;
 
     private ImageButton currPaint, drawBtn, eraseBtn, newBtn, saveBtn;
 
@@ -64,6 +71,61 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         saveBtn = (ImageButton)findViewById(R.id.save_btn);
         saveBtn.setOnClickListener(this);
 
+
+        drawView.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawView.getElements();
+            }
+        });
+
+        try {
+            socket = IO.socket("https://lit-ravine-37919.herokuapp.com/");
+            socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    socket.emit("connected", "ChynaJake");
+                }
+            });
+
+            socket.on("meconnected", new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    Log.d("MyLogs", "meConnected" + args[0].toString());
+                }
+            });
+
+            socket.on("data_painted", new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    Log.d("MyLogs", "Painted " + args[0].toString());
+                    Log.d("MyLogs", "Painted " + args.length);
+                }
+            });
+
+
+            // send server message
+            socket.emit("message_server", "Hi");
+
+            // listen server message
+            socket.on("message_client", new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    Log.d("MyLogs", "messageClinet"+args[0].toString());
+                }
+            });
+
+            socket.on("painter", new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    Log.d("MyLogs", args[0].toString());
+                }
+            });
+
+            socket.connect();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
 
 
     }
@@ -203,5 +265,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
 
+    }
+
+    public void sendData(Object [] data) {
+        Log.d("MyLogs", data.toString());
+        try{
+            if(socket.connected()){
+                socket.emit("data_painting", data);
+            }
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
     }
 }
