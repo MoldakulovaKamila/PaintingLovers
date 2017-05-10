@@ -1,8 +1,9 @@
-package com.example.drawingfun;
+package com.example.drawingfun.activities;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -12,6 +13,12 @@ import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+
+import com.example.drawingfun.R;
+import com.example.drawingfun.views.DrawingView;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.net.URISyntaxException;
 import java.util.UUID;
@@ -71,14 +78,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         saveBtn = (ImageButton)findViewById(R.id.save_btn);
         saveBtn.setOnClickListener(this);
 
-
-        drawView.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                drawView.getElements();
-            }
-        });
-
         try {
             socket = IO.socket("https://lit-ravine-37919.herokuapp.com/");
             socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
@@ -98,7 +97,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             socket.on("data_painted", new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
-                    Log.d("MyLogs", "Painted " + args[0].toString());
+                    JSONObject job = (JSONObject) args[0];
+                    Log.d("MyLogs", "Painted " + job.toString());
+                    try {
+                        Log.d("MyLogs", "x " + job.get("x"));
+                        Log.d("MyLogs", "y " + job.get("y"));
+                        Log.d("MyLogs", "type " + job.get("type"));
+                        Log.d("MyLogs", "color " + job.get("color"));
+                        Log.d("MyLogs", "size " + job.get("size"));
+                        Log.d("MyLogs", "lastSize " + job.get("lastSize"));
+                        Log.d("MyLogs", "erase " + job.get("erase"));
+                    }catch(JSONException e){
+                        e.printStackTrace();
+                    }
+//                    Log.d("MyLogs", "Painted " + args[1].toString());
+//                    Log.d("MyLogs", "Painted " + args[2].toString());
+//                    Log.d("MyLogs", "Painted " + args[3].toString());
+//                    Log.d("MyLogs", "Painted " + args[4].toString());
+//                    Log.d("MyLogs", "Painted " + args[5].toString());
+//                    Log.d("MyLogs", "Painted " + args[6].toString());
                     Log.d("MyLogs", "Painted " + args.length);
                 }
             });
@@ -228,7 +245,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             brushDialog.show();
         }else if(view.getId()==R.id.new_btn){
-            //new button
+            //drawView.startNew();
+            Intent in = new Intent(this, ObserverActivity.class);
+            startActivity(in);
         }else if(view.getId()==R.id.save_btn){
             AlertDialog.Builder saveDialog = new AlertDialog.Builder(this);
             saveDialog.setTitle("Save drawing");
@@ -267,7 +286,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    public void sendData(Object [] data) {
+    public void sendData(JSONObject data) {
         Log.d("MyLogs", data.toString());
         try{
             if(socket.connected()){

@@ -1,4 +1,4 @@
-package com.example.drawingfun;
+package com.example.drawingfun.views;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -11,16 +11,16 @@ import android.graphics.PorterDuffXfermode;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.MotionEvent;
 import android.view.View;
 
+import com.example.drawingfun.R;
+
 /**
- * Created by kamila on 5/7/17.
+ * Created by Admin on 08.05.2017.
  */
 
-public class DrawingView extends View {
+public class ObserverView extends View {
     Context context;
-    private Object [] elements = new Object[7];
     //drawing path
     private Path drawPath;
     //drawing and canvas paint
@@ -35,17 +35,18 @@ public class DrawingView extends View {
     private boolean erase=false;
 
 
-    public DrawingView(Context context, AttributeSet attrs){
+    public ObserverView(Context context, AttributeSet attrs){
         super(context, attrs);
         setupDrawing();
         this.context = context;
     }
     private void setupDrawing(){
 //get drawing area setup for interaction
-        brushSize = getResources().getInteger(R.integer.medium_size);
+        brushSize = getResources().getInteger(R.integer.small_size);
         lastBrushSize = brushSize;
         drawPath = new Path();
         drawPaint = new Paint();
+        paintColor = Color.parseColor("#FF0000FF");
         drawPaint.setColor(paintColor);
         drawPaint.setAntiAlias(true);
         drawPaint.setStrokeWidth(brushSize);
@@ -70,73 +71,56 @@ public class DrawingView extends View {
 //draw view
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        float touchX = event.getX();
-        float touchY = event.getY();
-        elements[0] = touchX;
-        elements[1] = touchY;
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                drawPath.moveTo(touchX, touchY);
-                elements[6] = 0;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                drawPath.lineTo(touchX, touchY);
-                elements[6] = 1;
-                break;
-            case MotionEvent.ACTION_UP:
-                drawCanvas.drawPath(drawPath, drawPaint);
-                drawPath.reset();
-                elements[6] = 2;
-                break;
-            default:
-                return false;
+
+    public void drawFunction(int type, float x, float y) {
+        if(type == 0) {
+            drawPath.moveTo(x, y);
+        }else if(type == 1) {
+            drawPath.lineTo(x, y);
+        }else if(type ==2) {
+            drawCanvas.drawPath(drawPath, drawPaint);
+            drawPath.reset();
+        }else{
+            Log.d("MyLogs", "We are inside else of type");
         }
-        ((MainActivity)context).sendData(elements);
+
         invalidate();
-        return true;
-//detect user touch
     }
 
-    public void setColor(String newColor){
+    public void setColor(int newColor) {
         invalidate();
-        paintColor = Color.parseColor(newColor);
+        paintColor = newColor;
         drawPaint.setColor(paintColor);
         Log.d("Color",paintColor+" ");
-        elements[2] = paintColor;
 //set color
     }
 
-    public void setBrushSize(float newSize){
+    public void setBrushSize(float newSize) {
         float pixelAmount = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
                 newSize, getResources().getDisplayMetrics());
         brushSize=pixelAmount;
         drawPaint.setStrokeWidth(brushSize);
-        elements[3] = brushSize;
+
 //update size
     }
     public void setLastBrushSize(float lastSize){
         lastBrushSize=lastSize;
-        elements[4] = lastBrushSize;
     }
+
     public float getLastBrushSize(){
         return lastBrushSize;
     }
+
     public void setErase(boolean isErase){
 //set erase true or false
         erase=isErase;
         if(erase) drawPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
         else drawPaint.setXfermode(null);
-        elements[5] = erase;
     }
+
     public void startNew(){
         drawCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
         invalidate();
-    }
-
-    public Object[] getElements(){
-        return elements;
     }
 
 

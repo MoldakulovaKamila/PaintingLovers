@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="#FFCCCCCC"
     android:orientation="vertical"
-    tools:context=".MainActivity" >
+    tools:context=".activities.MainActivity" >
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="50dp"
@@ -36,7 +36,7 @@
             android:contentDescription="@string/save"
             android:src="@drawable/save" />
     </LinearLayout>
-    <com.example.drawingfun.DrawingView
+    <com.example.drawingfun.views.DrawingView
         android:id="@+id/drawing"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
