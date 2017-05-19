@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private ImageButton currPaint, drawBtn, eraseBtn, newBtn, saveBtn;
 
+    String room;
 
     public float smallBrush, mediumBrush, largeBrush;
 
@@ -79,7 +80,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         saveBtn.setOnClickListener(this);
 
         try {
-            socket = IO.socket("https://lit-ravine-37919.herokuapp.com/");
+            room = getIntent().getStringExtra("room");
+            Log.d("MyLogs", "MainAc, room " + room);
+//            socket = IO.socket("http://192.168.100.19:3000"); // for router of lab518
+            socket = IO.socket("http://192.168.43.84:3000");  // current ipv4 of Pulp
             socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
@@ -93,59 +97,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Log.d("MyLogs", "meConnected" + args[0].toString());
                 }
             });
-
-            socket.on("data_painted", new Emitter.Listener() {
-                @Override
-                public void call(Object... args) {
-                    JSONObject job = (JSONObject) args[0];
-                    Log.d("MyLogs", "Painted " + job.toString());
-                    try {
-                        Log.d("MyLogs", "x " + job.get("x"));
-                        Log.d("MyLogs", "y " + job.get("y"));
-                        Log.d("MyLogs", "type " + job.get("type"));
-                        Log.d("MyLogs", "color " + job.get("color"));
-                        Log.d("MyLogs", "size " + job.get("size"));
-                        Log.d("MyLogs", "lastSize " + job.get("lastSize"));
-                        Log.d("MyLogs", "erase " + job.get("erase"));
-                    }catch(JSONException e){
-                        e.printStackTrace();
-                    }
-//                    Log.d("MyLogs", "Painted " + args[1].toString());
-//                    Log.d("MyLogs", "Painted " + args[2].toString());
-//                    Log.d("MyLogs", "Painted " + args[3].toString());
-//                    Log.d("MyLogs", "Painted " + args[4].toString());
-//                    Log.d("MyLogs", "Painted " + args[5].toString());
-//                    Log.d("MyLogs", "Painted " + args[6].toString());
-                    Log.d("MyLogs", "Painted " + args.length);
-                }
-            });
-
-
-            // send server message
-            socket.emit("message_server", "Hi");
-
-            // listen server message
-            socket.on("message_client", new Emitter.Listener() {
-                @Override
-                public void call(Object... args) {
-                    Log.d("MyLogs", "messageClinet"+args[0].toString());
-                }
-            });
-
-            socket.on("painter", new Emitter.Listener() {
-                @Override
-                public void call(Object... args) {
-                    Log.d("MyLogs", args[0].toString());
-                }
-            });
+            JSONObject a  = new JSONObject();
+            a.put("room", room);
+            socket.emit("create", a);
 
             socket.connect();
         } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
             e.printStackTrace();
         }
 
 
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+    }
+
     public void paintClicked(View view){
         drawView.setErase(false);
         drawView.setBrushSize(drawView.getLastBrushSize());
@@ -208,6 +179,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             brushDialog.show();
         }else if(view.getId()==R.id.erase_btn){
             //switch to erase - choose size
+            JSONObject b = new JSONObject();
+            try {
+                b.put("type", 0);
+                b.put("room", room);
+                if(socket.connected()) {
+                    socket.emit("delete", b);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
             final Dialog brushDialog = new Dialog(this);
             brushDialog.setTitle("Eraser size:");
             brushDialog.setContentView(R.layout.brush_chooser);
@@ -246,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             brushDialog.show();
         }else if(view.getId()==R.id.new_btn){
             //drawView.startNew();
-            Intent in = new Intent(this, ObserverActivity.class);
+            Intent in = new Intent(this, EnteranceActivity.class);
             startActivity(in);
         }else if(view.getId()==R.id.save_btn){
             AlertDialog.Builder saveDialog = new AlertDialog.Builder(this);
@@ -290,7 +272,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.d("MyLogs", data.toString());
         try{
             if(socket.connected()){
-                socket.emit("data_painting", data);
+                data.put("room", room);
+                socket.emit("draw", data);
+//                socket.emit("data_painting", data);
+
             }
         }catch(Exception e) {
             e.printStackTrace();

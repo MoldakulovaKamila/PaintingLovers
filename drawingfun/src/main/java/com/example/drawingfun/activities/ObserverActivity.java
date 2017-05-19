@@ -1,5 +1,6 @@
 package com.example.drawingfun.activities;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -29,6 +30,8 @@ public class ObserverActivity extends AppCompatActivity {
 
     Socket socket;
 
+    public float initBrush;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,40 +43,32 @@ public class ObserverActivity extends AppCompatActivity {
         setContentView(R.layout.observer);
         drawView = (ObserverView)findViewById(R.id.observe);
 
-
+        initBrush = getResources().getInteger(R.integer.medium_size);
 
 
 //        saveBtn = (ImageButton)findViewById(R.id.save_btn);
 //        saveBtn.setOnClickListener(this);
         try {
-            socket = IO.socket("https://lit-ravine-37919.herokuapp.com/");
+            //socket = IO.socket("http://192.168.100.19:3000");  // ip for lab518
+            socket = IO.socket("http://192.168.43.84:3000");  // current ipv4 of Pulp
             socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
                     socket.emit("connected", "ChynaJake");
                 }
             });
+            String room = getIntent().getStringExtra("room");
+            JSONObject c = new JSONObject();
+            Log.d("MyLogs", "ObserverACtivity " + room);
+            c.put("room", room);
+            socket.emit("enter", c);
 
-            socket.on("meconnected", new Emitter.Listener() {
-                @Override
-                public void call(Object... args) {
-                    Log.d("MyLogs", "meConnected" + args[0].toString());
-                }
-            });
-
-            socket.on("data_painted", new Emitter.Listener() {
+            socket.on("drawing", new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
                     job = (JSONObject) args[0];
                     Log.d("MyLogs", "OA Painted " + job.toString());
                     try {
-                        Log.d("MyLogs", "OA x " + job.get("x"));
-                        Log.d("MyLogs", "OA y " + job.get("y"));
-                        Log.d("MyLogs", "OA type " + job.get("type"));
-                        Log.d("MyLogs", "OA color " + job.get("color"));
-                        Log.d("MyLogs", "OA size " + job.get("size"));
-                        Log.d("MyLogs", "OA lastSize " + job.get("lastSize"));
-                        Log.d("MyLogs", "OA erase " + job.get("erase"));
                         Log.d("MyLogs1", "OA x " + job.get("x"));
                         Log.d("MyLogs1", "OA y " + job.get("y"));
                         Log.d("MyLogs1", "OA type " + job.get("type"));
@@ -81,13 +76,7 @@ public class ObserverActivity extends AppCompatActivity {
                         Log.d("MyLogs1", "OA size " + job.get("size"));
                         Log.d("MyLogs1", "OA lastSize " + job.get("lastSize"));
                         Log.d("MyLogs1", "OA erase " + job.get("erase"));
-//                        float x_coor = (Float)job.get("x");
-//                        float y_coor = (Float)job.get("y");
-//                        int type = (Integer)job.get("type");
-//                        int color = (Integer)job.get("color");
-//                        float b_size = (Float)job.get("size");
-//                        float b_lastSize = (Float)job.get("lastSize");
-//                        boolean erase = (Boolean)job.get("erase");
+
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -95,10 +84,14 @@ public class ObserverActivity extends AppCompatActivity {
                                 try {
                                     if(!job.get("color").equals(null)){
                                         drawView.setColor((Integer)job.get("color"));
+                                    }else {
+                                        drawView.setColor(Color.parseColor("#FF660000"));
                                     }
 
                                 if(!job.get("lastSize").equals(null)){
                                     drawView.setLastBrushSize((Integer)job.get("lastSize"));
+                                }else {
+                                    drawView.setLastBrushSize(initBrush);
                                 }
                                 paintSetBrushSize((Integer)job.get("size") ,(Boolean)job.get("erase"));
                                 drawView.drawFunction((Integer)job.get("type"), Float.valueOf(job.get("x").toString()), Float.valueOf(job.get("y").toString()));
@@ -116,15 +109,11 @@ public class ObserverActivity extends AppCompatActivity {
                     Log.d("MyLogs", "Painted " + args.length);
                 }
             });
-            socket.on("painter", new Emitter.Listener() {
-                @Override
-                public void call(Object... args) {
-                    Log.d("MyLogs", args[0].toString());
-                }
-            });
 
             socket.connect();
         } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
             e.printStackTrace();
         }
 
