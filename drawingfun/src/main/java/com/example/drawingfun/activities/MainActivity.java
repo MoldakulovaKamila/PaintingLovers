@@ -2,6 +2,7 @@ package com.example.drawingfun.activities;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -27,10 +28,12 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     public DrawingView drawView;
 
     Socket socket;
+    Context that;
 
     private ImageButton currPaint, drawBtn, eraseBtn, newBtn, saveBtn;
 
@@ -38,11 +41,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public float smallBrush, mediumBrush, largeBrush;
 
+    String LOG_TAG = "MyLogs";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        Log.d(LOG_TAG, "MA onCreate");
+        that = this;
         setContentView(R.layout.activity_main);
 
         drawView = (DrawingView)findViewById(R.id.drawing);
@@ -60,21 +66,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         newBtn = (ImageButton)findViewById(R.id.new_btn);
         newBtn.setOnClickListener(this);
 
-        AlertDialog.Builder newDialog = new AlertDialog.Builder(this);
-        newDialog.setTitle("New drawing");
-        newDialog.setMessage("Start new drawing (you will lose the current drawing)?");
-        newDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener(){
-            public void onClick(DialogInterface dialog, int which){
-                drawView.startNew();
-                dialog.dismiss();
-            }
-        });
-        newDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener(){
-            public void onClick(DialogInterface dialog, int which){
-                dialog.cancel();
-            }
-        });
-        newDialog.show();
+//        AlertDialog.Builder newDialog = new AlertDialog.Builder(this);
+//        newDialog.setTitle("New drawing");
+//        newDialog.setMessage("Start new drawing (you will lose the current drawing)?");
+//        newDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener(){
+//            public void onClick(DialogInterface dialog, int which){
+//                drawView.startNew();
+//                dialog.dismiss();
+//            }
+//        });
+//        newDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener(){
+//            public void onClick(DialogInterface dialog, int which){
+//                dialog.cancel();
+//            }
+//        });
+//        newDialog.show();
 
         saveBtn = (ImageButton)findViewById(R.id.save_btn);
         saveBtn.setOnClickListener(this);
@@ -83,7 +89,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             room = getIntent().getStringExtra("room");
             Log.d("MyLogs", "MainAc, room " + room);
 //            socket = IO.socket("http://192.168.100.19:3000"); // for router of lab518
-            socket = IO.socket("http://192.168.43.84:3000");  // current ipv4 of Pulp
+//            socket = IO.socket("http://192.168.43.84:3000");  // current ipv4 of Pulp
+            socket = IO.socket("http://192.168.100.5:3000");  // current ipv4 of homeWifi
             socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
@@ -100,6 +107,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             JSONObject a  = new JSONObject();
             a.put("room", room);
             socket.emit("create", a);
+            socket.on("created", new Emitter.Listener() {
+                @Override
+                public void call(Object... args) {
+                    if((Boolean) args[0]) {
+                        Log.d(LOG_TAG, "boolean true");
+                    }else {
+                        deleteRoom();
+                        Toast.makeText(that, "Some problems with server occured", Toast.LENGTH_LONG).show();
+                        startActivity(new Intent(that, EnteranceActivity.class));
+                    }
+                }
+            });
+
 
             socket.connect();
         } catch (URISyntaxException e) {
@@ -108,12 +128,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             e.printStackTrace();
         }
 
-
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
 
     }
 
@@ -141,6 +155,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         if(view.getId()==R.id.draw_btn){
             //draw button clicked
+            if(drawView.getErase()){
+                drawView.setColor("#FF000000");
+            }
             final Dialog brushDialog = new Dialog(this);
             brushDialog.setTitle("Brush size:");
             brushDialog.setContentView(R.layout.brush_chooser);
@@ -179,16 +196,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             brushDialog.show();
         }else if(view.getId()==R.id.erase_btn){
             //switch to erase - choose size
-            JSONObject b = new JSONObject();
-            try {
-                b.put("type", 0);
-                b.put("room", room);
-                if(socket.connected()) {
-                    socket.emit("delete", b);
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+
 
             final Dialog brushDialog = new Dialog(this);
             brushDialog.setTitle("Eraser size:");
@@ -198,9 +206,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             smallBtn.setOnClickListener(new OnClickListener(){
                 @Override
                 public void onClick(View v) {
-                    drawView.setErase(true);
                     drawView.setBrushSize(smallBrush);
-                    drawView.setErase(false);
                     brushDialog.dismiss();
                 }
             });
@@ -208,9 +214,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mediumBtn.setOnClickListener(new OnClickListener(){
                 @Override
                 public void onClick(View v) {
-                    drawView.setErase(true);
                     drawView.setBrushSize(mediumBrush);
-                    drawView.setErase(false);
                     brushDialog.dismiss();
                 }
             });
@@ -220,15 +224,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 public void onClick(View v) {
                     drawView.setErase(true);
                     drawView.setBrushSize(largeBrush);
-                    drawView.setErase(false);
                     brushDialog.dismiss();
                 }
             });
 
+            drawView.setColor("#FFFFFFFF");
             brushDialog.show();
         }else if(view.getId()==R.id.new_btn){
             //drawView.startNew();
+            deleteRoom();
             Intent in = new Intent(this, EnteranceActivity.class);
+            in.putExtra("update", 0);
             startActivity(in);
         }else if(view.getId()==R.id.save_btn){
             AlertDialog.Builder saveDialog = new AlertDialog.Builder(this);
@@ -280,5 +286,56 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }catch(Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void deleteRoom() {
+        JSONObject b = new JSONObject();
+        try {
+            b.put("type", 0);
+            b.put("room", room);
+            if(socket.connected()) {
+                socket.emit("delete", b);
+                socket.on("deleted", new Emitter.Listener() {
+                    @Override
+                    public void call(Object... args) {
+                        Log.d(LOG_TAG, "Room is deleted is " + args[0].toString());
+                    }
+                });
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(LOG_TAG, "MA onResume");
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Log.d(LOG_TAG, "MA onRestart");
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(LOG_TAG, "MA onStart");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d(LOG_TAG, "MA onStop");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(LOG_TAG, "MA onDestroy");
+        deleteRoom();
+        socket.close();
     }
 }

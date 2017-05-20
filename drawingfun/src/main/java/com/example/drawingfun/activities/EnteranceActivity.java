@@ -9,7 +9,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.ListView;
 import android.widget.SimpleAdapter;
 
 import com.example.drawingfun.R;
@@ -23,6 +22,8 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -35,7 +36,6 @@ import io.socket.emitter.Emitter;
 public class EnteranceActivity extends AppCompatActivity {
     Fragment left;
     Fragment right;
-    ListView listView;
 
 
     //ConstraintLayout frame;
@@ -56,12 +56,17 @@ public class EnteranceActivity extends AppCompatActivity {
     String [] from = { ATTRIBUTE_TEXT };
     int [] to = { R.id.item_data };
 
+    Timer timer;
+    TimerTask tTask;
+    long interval = 1000;
+
 
     public static final String LOG_TAG = "MYLOGS";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(LOG_TAG, "EA onCreate");
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.enterance);
@@ -81,9 +86,12 @@ public class EnteranceActivity extends AppCompatActivity {
         sAdapter = new SimpleAdapter(this, data, R.layout.item, from, to);
 
 
+
+
         try {
             //socket = IO.socket("http://192.168.100.19:3000");  // ip for lab518
-            socket = IO.socket("http://192.168.43.84:3000");  // current ipv4 of Pulp
+            //socket = IO.socket("http://192.168.43.84:3000");  // current ipv4 of Pulp\
+            socket = IO.socket("http://192.168.100.5:3000");  // current ipv4 of homeWifi
             socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
@@ -97,21 +105,18 @@ public class EnteranceActivity extends AppCompatActivity {
                 @Override
                 public void call(Object... args) {
                     Log.d("MyLogs", "Rooms " + args[0].toString());
+                    data.clear();
                     JSONArray array = (JSONArray) args[0];
                     try {
                         for(int i = 0; i < array.length(); i++) {
                             element = array.getString(i);
-                            if(!data.contains(array.getString(i))){
 
-                                m = new HashMap<>();
-                                m.put(ATTRIBUTE_TEXT, element);
-                                data.add(m);
+                            m = new HashMap<>();
+                            m.put(ATTRIBUTE_TEXT, element);
+                            data.add(m);
 
-                                Log.d("MyLogs", "From server " + array.getString(i));
-                                Log.d("MyLogs", "From server " + data.toString());
-                            }else {
-                                Log.d("MyLogs", "inside already");
-                            }
+                            Log.d("MyLogs", "From server " + array.getString(i));
+                            Log.d("MyLogs", "From server " + data.toString());
 
                         }
                     } catch (JSONException e) {
@@ -133,20 +138,14 @@ public class EnteranceActivity extends AppCompatActivity {
             });
 
 
+
+
             socket.connect();
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
-
-        //listView.setAdapter(sAdapter);
-
-//        listView.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//
-//            }
-//        });
     }
+
 
     public void goTo(int role,String room) {
         // role 1 - watch
@@ -166,7 +165,37 @@ public class EnteranceActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if(getIntent().getIntExtra("update", 0) == 0) {
+            socket.emit("getList", "");
+            sAdapter.notifyDataSetChanged();
+        }
+        Log.d(LOG_TAG, "EA onResume");
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
         sAdapter.notifyDataSetChanged();
+        Log.d(LOG_TAG, "EA onRestart");
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(LOG_TAG, "EA onStart");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d(LOG_TAG, "EA onStop");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(LOG_TAG, "EA onDestroy");
+
     }
 }
 

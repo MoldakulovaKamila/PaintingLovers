@@ -59,6 +59,16 @@ public class DrawingView extends View {
         drawPaint.setStrokeJoin(Paint.Join.ROUND);
         drawPaint.setStrokeCap(Paint.Cap.ROUND);
         canvasPaint = new Paint(Paint.DITHER_FLAG);
+
+        try {
+            setColor("#FF660000");
+            setBrushSize(brushSize);
+            setLastBrushSize(lastBrushSize);
+            elements.put("erase", erase);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
     }
 
     @Override
@@ -136,15 +146,16 @@ public class DrawingView extends View {
     }
 
     public void setBrushSize(float newSize) {
-        float pixelAmount = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
-                newSize, getResources().getDisplayMetrics());
-        brushSize=pixelAmount;
-        drawPaint.setStrokeWidth(brushSize);
         try {
             elements.put("size", brushSize);
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        float pixelAmount = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+                newSize, getResources().getDisplayMetrics());
+        brushSize=pixelAmount;
+        drawPaint.setStrokeWidth(brushSize);
+
 //update size
     }
     public void setLastBrushSize(float lastSize){
@@ -169,15 +180,14 @@ public class DrawingView extends View {
             e.printStackTrace();
         }
     }
+
+    public boolean getErase() {
+        return erase;
+    }
+
     public void startNew(){
         drawCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
         invalidate();
     }
-
-    public JSONObject getElements(){
-        return elements;
-    }
-
-
 
 }
